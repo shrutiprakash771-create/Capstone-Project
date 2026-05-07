@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weekly Stats</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            padding: 20px;
+        }
+
+        canvas {
+            max-width: 600px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>📊 Weekly Stats</h2>
+
+<p id="days"></p>
+<p id="sessions"></p>
+<p id="streak"></p>
+
+<h3>📈 Sessions Per Day</h3>
+<canvas id="barChart"></canvas>
+
+<h3>🍩 Study Distribution</h3>
+<canvas id="pieChart"></canvas>
+
+<script>
+let data = JSON.parse(localStorage.getItem("weeklyData") || "{}");
+
+let dates = Object.keys(data);
+let sessionCounts = dates.map(d => data[d].length);
+
+// ---- Basic Stats ----
+let totalDays = dates.length;
+
+let totalSessions = 0;
+dates.forEach(d => totalSessions += data[d].length);
+
+// streak
+let streak = 0;
+let today = new Date();
+
+for (let i = 0; i < 7; i++) {
+    let date = new Date();
+    date.setDate(today.getDate() - i);
+    let key = date.toISOString().split("T")[0];
+
+    if (data[key] && data[key].length > 0) {
+        streak++;
+    } else {
+        break;
+    }
+}
+
+document.getElementById("days").innerText = "Days Studied: " + totalDays;
+document.getElementById("sessions").innerText = "Total Sessions: " + totalSessions;
+document.getElementById("streak").innerText = "🔥 Streak: " + streak + " days";
+
+// --------------------------- BAR CHART -------------------------------
+new Chart(document.getElementById("barChart"), {
+    type: 'bar',
+    data: {
+        labels: dates,
+        datasets: [{
+            label: 'Sessions',
+            data: sessionCounts
+        }]
+    }
+});
+
+// ---- PIE CHART (Subjects) ----
+let subjectCount = {};
+
+dates.forEach(d => {
+    data[d].forEach(item => {
+        let subject = item.split(":")[0];
+
+        if (!subjectCount[subject]) {
+            subjectCount[subject] = 0;
+        }
+        subjectCount[subject]++;
+    });
+});
+
+new Chart(document.getElementById("pieChart"), {
+    type: 'pie',
+    data: {
+        labels: Object.keys(subjectCount),
+        datasets: [{
+            data: Object.values(subjectCount)
+        }]
+    }
+});
+</script>
+
+</body>
+</html>
