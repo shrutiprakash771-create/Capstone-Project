@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Timetable Generator</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: 500;
+            display: block;
+            margin-top: 10px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        small {
+            color: gray;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #5a67d8;
+        }
+
+        .output {
+            margin-top: 30px;
+            background: #f7f7f7;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .warning {
+            background: #ffe6e6;
+            color: #a94442;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>📅 Smart Timetable Generator</h1>
+
+    <form method="POST" action="/result">
+        <!-- BASIC -->
+        <div class="section">
+            <h3>📌 Basic Planning</h3>
+
+            <label>How many days do you want to plan?</label>
+            <input name="days" placeholder="e.g. 7">
+
+            <label>Subjects (comma separated)</label>
+            <input name="subjects" placeholder="math, science, english">
+
+            <label>Weak Subjects</label>
+            <input name="weak" placeholder="subjects you struggle with">
+
+            <label>Strong Subjects</label>
+            <input name="strong" placeholder="subjects you are good at">
+        </div>
+
+        <!-- STUDY -->
+        <div class="section">
+            <h3>⏱ Study Settings</h3>
+
+            <div class="grid">
+                <div>
+                    <label>Start Time (HH:MM)</label>
+                    <input name="start" placeholder="08:00">
+                    <small>When your day begins</small>
+                </div>
+
+                <div>
+                    <label>Session Duration (minutes)</label>
+                    <input name="duration" placeholder="60">
+                    <small>Length of one study session</small>
+                </div>
+
+                <div>
+                    <label>Break After How Many Sessions?</label>
+                    <input name="break_after" placeholder="2">
+                </div>
+
+                <div>
+                    <label>Break Duration (minutes)</label>
+                    <input name="break_duration" placeholder="15">
+                </div>
+
+                <div>
+                    <label>Total Study Time (hours)</label>
+                    <input name="study_hours" placeholder="6">
+                </div>
+
+                <div>
+                    <label>Total Break Time (hours)</label>
+                    <input name="break_hours" placeholder="1">
+                </div>
+            </div>
+        </div>
+
+        <!-- MEALS -->
+        <div class="section">
+            <h3>🍽 Meal Times</h3>
+
+            <div class="grid">
+                <div>
+                    <label>Breakfast Start (HH:MM)</label>
+                    <input name="b_start">
+                </div>
+
+                <div>
+                    <label>Breakfast End (HH:MM)</label>
+                    <input name="b_end">
+                </div>
+
+                <div>
+                    <label>Lunch Start (HH:MM)</label>
+                    <input name="l_start">
+                </div>
+
+                <div>
+                    <label>Lunch End (HH:MM)</label>
+                    <input name="l_end">
+                </div>
+
+                <div>
+                    <label>Dinner Start (HH:MM)</label>
+                    <input name="d_start">
+                </div>
+
+                <div>
+                    <label>Dinner End (HH:MM)</label>
+                    <input name="d_end">
+                </div>
+            </div>
+        </div>
+
+        <!-- WARNINGS -->
+        <div id="warnings"></div>
+
+        <button type="submit">✨ Generate My Timetable</button>
+    </form>
+
+    {% if timetable %}
+    <div class="output">
+        <h3>📋 Your Timetable</h3>
+        {% for line in timetable %}
+            {{ line }}<br>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function toMinutes(t) {
+    if (!t) return null;
+    let parts = t.split(":");
+    if (parts.length !== 2) return null;
+    let h = parseInt(parts[0]);
+    let m = parseInt(parts[1]);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+}
+
+function showWarnings() {
+    let warnings = [];
+
+    let days = parseInt(document.querySelector('[name="days"]').value);
+    let duration = parseInt(document.querySelector('[name="duration"]').value);
+    let breakAfter = parseInt(document.querySelector('[name="break_after"]').value);
+    let studyHours = parseInt(document.querySelector('[name="study_hours"]').value);
+
+    let start = toMinutes(document.querySelector('[name="start"]').value);
+    let bStart = toMinutes(document.querySelector('[name="b_start"]').value);
+    let lStart = toMinutes(document.querySelector('[name="l_start"]').value);
+
+    if (days > 30) {
+        warnings.push("⚠️ Too many days. Try 30 or less.");
+    }
+
+    if (duration >= 120) {
+        warnings.push("⚠️ Long sessions → fewer study blocks.");
+    }
+
+    if (studyHours && duration && breakAfter) {
+        let sessions = Math.floor((studyHours * 60) / duration);
+        if (sessions < breakAfter) {
+            warnings.push("⚠️ Break may never occur.");
+        }
+    }
+
+    if (start && bStart && start > bStart) {
+        warnings.push("⚠️ Breakfast will be skipped.");
+    }
+
+    if (start && lStart && start > lStart) {
+        warnings.push("⚠️ Lunch may be skipped.");
+    }
+
+    if (document.querySelector('[name="start"]').value && start === null) {
+        warnings.push("⚠️ Invalid time format (use HH:MM).");
+    }
+
+    let box = document.getElementById("warnings");
+    box.innerHTML = "";
+
+    warnings.forEach(w => {
+        let div = document.createElement("div");
+        div.className = "warning";
+        div.innerText = w;
+        box.appendChild(div);
+    });
+}
+
+document.querySelectorAll("input").forEach(input => {
+    input.addEventListener("input", showWarnings);
+});
+</script>
+
+</body>
+</html>

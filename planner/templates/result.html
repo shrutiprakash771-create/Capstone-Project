@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Timetable</title>
+</head>
+<body>
+
+<h2>📋 Your Timetable</h2>
+
+{% set ns = namespace(days=[], current_day=None, current_rows=[]) %}
+
+{% for line in timetable %}
+
+    {% if "DAY" in line %}
+
+        {% if ns.current_day %}
+            {% set _ = ns.days.append((ns.current_day, ns.current_rows)) %}
+        {% endif %}
+
+        {% set ns.current_day = line %}
+        {% set ns.current_rows = [] %}
+
+    {% else %}
+        {% set _ = ns.current_rows.append(line) %}
+    {% endif %}
+
+{% endfor %}
+
+{% if ns.current_day %}
+    {% set _ = ns.days.append((ns.current_day, ns.current_rows)) %}
+{% endif %}
+
+{% for day, rows in ns.days %}
+
+    <h3 style="background:#667eea;color:white;padding:8px;">{{ day }}</h3>
+
+    <table border="1" width="100%">
+        <tr>
+            <th>Activity</th>
+            <th>Time</th>
+            <th>Done?</th>
+        </tr>
+
+        {% for line in rows %}
+            {% set parts = line.split(": ", 1) %}
+            <tr>
+                <td>{{ parts[0] }}</td>
+                <td>{{ parts[1] if parts|length > 1 else "" }}</td>
+                <td>
+                    <input type="checkbox" onchange="saveProgress(this, '{{ line }}')">
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+
+{% endfor %}
+
+<a href="/stats">📊 View Weekly Stats</a>
+
+<script>
+function saveProgress(checkbox, line) {
+    let data = JSON.parse(localStorage.getItem("weeklyData") || "{}");
+
+    let today = new Date().toISOString().split("T")[0];
+
+    if (!data[today]) {
+        data[today] = [];
+    }
+
+    if (checkbox.checked) {
+        if (!data[today].includes(line)) {
+            data[today].push(line);
+        }
+    } else {
+        data[today] = data[today].filter(item => item !== line);
+    }
+
+    localStorage.setItem("weeklyData", JSON.stringify(data));
+}
+</script>
+
+</body>
+</html>

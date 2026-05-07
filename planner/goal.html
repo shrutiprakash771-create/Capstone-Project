@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goal Planner</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 30px;
+    }
+
+    .container {
+      max-width: 850px;
+      margin: auto;
+      background: white;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .top-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    input,
+    select,
+    button {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: #222;
+      color: white;
+    }
+
+    .goal-card {
+      border: 1px solid #e3e6ee;
+      padding: 14px;
+      border-radius: 10px;
+      margin-top: 14px;
+    }
+
+    .goal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .task {
+      margin-top: 8px;
+    }
+
+    .progress-wrapper {
+      margin-top: 14px;
+      margin-bottom: 10px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 16px;
+      background: #e5e7eb;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #4caf50;
+      transition: 0.3s;
+    }
+
+    .small {
+      color: #666;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .delete-btn {
+      background: #d9534f;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    .empty {
+      color: #888;
+      margin-top: 18px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Goal Planner</h1>
+    <p class="small">Plan goals between dates, add tasks, and track progress.</p>
+
+    <div class="top-section">
+      <input type="text" id="goalTitle" placeholder="Goal title" />
+      <input type="date" id="startDate" />
+      <input type="date" id="endDate" />
+      <button onclick="addGoal()">Add Goal</button>
+    </div>
+
+    <div class="top-section">
+      <input type="text" id="taskText" placeholder="Task for selected goal" />
+      <select id="goalSelect"></select>
+      <button onclick="addTask()">Add Task</button>
+    </div>
+
+    <div id="goalList"></div>
+  </div>
+
+  <script>
+    let goals = [];
+
+    function addGoal() {
+      const title = document.getElementById("goalTitle").value.trim();
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+
+      if (!title || !start || !end) {
+        alert("Please fill all fields");
+        return;
+      }
+
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+
+      const maxEndDate = new Date(startDate);
+      maxEndDate.setFullYear(startDate.getFullYear() + 12);
+
+      if (endDate < startDate) {
+        alert("End date must be after start date");
+        return;
+      }
+
+      if (endDate > maxEndDate) {
+        alert("You can plan goals up to 12 years from the start date");
+        return;
+      }
+
+      goals.push({
+        id: Date.now(),
+        title,
+        start,
+        end,
+        tasks: []
+      });
+
+      document.getElementById("goalTitle").value = "";
+      document.getElementById("startDate").value = "";
+      document.getElementById("endDate").value = "";
+
+      render();
+    }
+
+    function addTask() {
+      const text = document.getElementById("taskText").value.trim();
+      const goalId = Number(document.getElementById("goalSelect").value);
+
+      if (!text) {
+        alert("Enter a task");
+        return;
+      }
+
+      const goal = goals.find(g => g.id === goalId);
+
+      if (!goal) {
+        alert("Please create a goal first");
+        return;
+      }
+
+      goal.tasks.push({
+        text,
+        done: false
+      });
+
+      document.getElementById("taskText").value = "";
+      render();
+    }
+
+    function toggleTask(goalId, taskIndex) {
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) return;
+
+      goal.tasks[taskIndex].done = !goal.tasks[taskIndex].done;
+      render();
+    }
+
+    function deleteGoal(goalId) {
+      goals = goals.filter(g => g.id !== goalId);
+      render();
+    }
+
+    function render() {
+      const list = document.getElementById("goalList");
+      const select = document.getElementById("goalSelect");
+
+      list.innerHTML = "";
+      select.innerHTML = "";
+
+      if (goals.length === 0) {
+        list.innerHTML = `<p class="empty">No goals added yet.</p>`;
+        localStorage.setItem("goals", JSON.stringify(goals));
+        return;
+      }
+
+      goals.forEach(goal => {
+        const option = document.createElement("option");
+        option.value = goal.id;
+        option.textContent = goal.title;
+        select.appendChild(option);
+
+        const completed = goal.tasks.filter(task => task.done).length;
+        const total = goal.tasks.length;
+        const percent = total ? Math.round((completed / total) * 100) : 0;
+
+        const card = document.createElement("div");
+        card.className = "goal-card";
+
+        card.innerHTML = `
+          <div class="goal-header">
+            <div>
+              <strong>${goal.title}</strong><br>
+              <span class="small">${goal.start} to ${goal.end}</span>
+            </div>
+            <button class="delete-btn" onclick="deleteGoal(${goal.id})">
+              Delete
+            </button>
+          </div>
+
+          <div class="progress-wrapper">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${percent}%"></div>
+            </div>
+            <p class="small">${percent}% completed</p>
+          </div>
+        `;
+
+        goal.tasks.forEach((task, index) => {
+          const taskDiv = document.createElement("div");
+          taskDiv.className = "task";
+
+          taskDiv.innerHTML = `
+            <label>
+              <input
+                type="checkbox"
+                ${task.done ? "checked" : ""}
+                onchange="toggleTask(${goal.id}, ${index})"
+              />
+              ${task.text}
+            </label>
+          `;
+
+          card.appendChild(taskDiv);
+        });
+
+        list.appendChild(card);
+      });
+
+      localStorage.setItem("goals", JSON.stringify(goals));
+    }
+
+    const saved = localStorage.getItem("goals");
+
+    if (saved) {
+      goals = JSON.parse(saved);
+    }
+
+    render();
+  </script>
+</body>
+</html>
